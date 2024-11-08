@@ -1,12 +1,16 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const mysql = require('mysql');  // Assuming you're using mysql for database
-
 const app = express();
-const port = 3001;
-app.use(bodyParser.json());
-require('./routes.js')(app);
+const bodyParser = require('body-parser');
+const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
-    console.log(`Example app listening on port http://localhost:${port}`)
-})
+    console.log(`Server running on port ${port}`);
+});
+
+// Use bodyParser for request parsing
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+const routes = require('./routes.js'); // import your routes
+
+// Set up routes
+routes(app); // Pass the app instance to your routes file
