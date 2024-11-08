@@ -151,5 +151,34 @@ module.exports = function (app) {
             });
         });
     });
+
+    app.put('/tickets', (req, res) => {
+        const sql = `
+            SELECT 
+                tickets.id, 
+                tickets.user_id, 
+                tickets.title, 
+                tickets.problem_details, 
+                tickets.type, 
+                tickets.house_id, 
+                tickets.created_at, 
+                tickets.updated_at, 
+                users.name AS user_name, 
+                users.email AS user_email
+            FROM tickets
+            JOIN users ON tickets.user_id = users.id
+            ORDER BY tickets.created_at DESC
+        `;
     
+        conn_db.query(sql, (err, results) => {
+            if (err) {
+                console.error('Error fetching tickets:', err);
+                return res.status(500).json({ error: 'Server error' });
+            }
+    
+            res.json({
+                tickets: results,
+            });
+        });
+    });
 };
