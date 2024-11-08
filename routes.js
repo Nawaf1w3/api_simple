@@ -35,8 +35,7 @@ module.exports = function (app) {
             res.send(rows);
         });
     });
-
-
+    
     // Create User Route
     app.post('/user/create', (req, res) => {
         const { name, password, email } = req.body;
@@ -62,7 +61,7 @@ module.exports = function (app) {
         });
     });
 
-
+    //log in 
     app.post('/login', (req, res) => {
         const { name, password } = req.body;
     
@@ -119,4 +118,38 @@ module.exports = function (app) {
             });
         });
     });
+
+    //teckit
+    app.post('/tickets', (req, res) => {
+        const { user_id, title, problem_details, type, house_id } = req.body;
+    
+        // Validate required fields
+        if (!user_id || !title || !problem_details || !type) {
+            return res.status(400).json({ error: 'user_id, title, problem_details, and type are required fields.' });
+        }
+    
+        // Validate the ticket type
+        if (!['repair', 'quotation'].includes(type)) {
+            return res.status(400).json({ error: "Type must be 'repair' or 'quotation'." });
+        }
+    
+        // Insert ticket into the database
+        const sql = `
+            INSERT INTO tickets (user_id, title, problem_details, type, house_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+        `;
+    
+        conn_db.query(sql, [user_id, title, problem_details, type, house_id || null], (err, result) => {
+            if (err) {
+                console.error('Error inserting ticket:', err);
+                return res.status(500).json({ error: 'Server error' });
+            }
+    
+            res.status(201).json({
+                message: 'Ticket created successfully',
+                ticket_id: result.insertId, // Return the ID of the newly created ticket
+            });
+        });
+    });
+    
 };
