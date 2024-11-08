@@ -13,4 +13,4 @@ app.use(bodyParser.urlencoded({ extended: false }));
 const routes = require('./routes.js'); // import your routes
 
 // Set up routes
-routes(app); // Pass the app instance to your routes file
+routes(app);
