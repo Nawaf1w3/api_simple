@@ -30,7 +30,7 @@ function isAdmin(req, res, next) {
     const userID = decoded.userID;
 
     // Query the database to get the user's expiration time (expireable_token)
-    const sql = 'SELECT expireable_token, role FROM users WHERE id = ?';
+    const sql = 'SELECT token_expires_at, role FROM users WHERE id = ?';
     conn_db.query(sql, [userID], (err, results) => {
         if (err) {
             return res.status(500).send('Server error');
@@ -44,7 +44,7 @@ function isAdmin(req, res, next) {
 
         // Check if the token has expired by comparing expireable_token with current time
         const now = new Date(); // Current date and time
-        const expireableToken = new Date(user.expireable_token);  // Expiry time from the database
+        const expireableToken = new Date(user.token_expirs_at);  // Expiry time from the database
 
         if (expireableToken < now) {
             return res.status(401).send('Token has expired');

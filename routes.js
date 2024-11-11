@@ -2,14 +2,26 @@ const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');
 const conn_db = require("./db_conn.js");
-const JWT_SECRET = 'NawafAlhomse'; // Use an env variable in production!
+const JWT_SECRET = 'NawafAlhoms'; // Use an env variable in production!
 const { isAdmin } = require('./middlewares/authmiddleware');
 
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) return res.status(401).send('Access Denied');
 
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(403).send('Invalid Token');
 
+        // Attach user ID and role to req object for access in routes
+        req.user = { id: decoded.userID, role: decoded.role };
+        next();
+    });
+}
 module.exports = function (app) {
     
-    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySUQiOjEsIm5hbWUiOiJ1c2VyMSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTczMTA2OTIzMn0.VT0D2rArxBacGNI1c0ivXor54r8corYd_F0L8RgRMIc';
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySUQiOjIsIm5hbWUiOiJ1c2VyMiIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTczMTMyODc0Nn0.yG49BDw-fiMAS-pVEiIY2f-fftZIWzZQhlcDX-49E7A';
 
     // Decode the token to inspect its payload
     const decodedToken = jwt.decode(token);
@@ -100,8 +112,8 @@ module.exports = function (app) {
                     // Set the expiration time for the token in the database (e.g., 1 hour from now)
                     const expireableToken = new Date(Date.now() + 3600 * 1000); // 1 hour expiration time
                     conn_db.query(
-                        'UPDATE users SET expireable_token = ? WHERE id = ?',
-                        [expireableToken, user.id],
+                        'UPDATE users SET  token_expires_at = ?, expireable_token = ? WHERE id = ?',
+                        [expireableToken,token,  user.id], 
                         (err) => {
                             if (err) {
                                 console.error('Error updating token in database:', err);
@@ -112,6 +124,7 @@ module.exports = function (app) {
                             res.json({ token });
                         }
                     );
+                    
                 } else {
                     res.status(401).send('Invalid name or password');
                 }
@@ -120,12 +133,13 @@ module.exports = function (app) {
     });
 
     //teckit
-    app.post('/tickets', (req, res) => {
-        const { user_id, title, problem_details, type, house_id } = req.body;
+    app.post('/tickets', authenticateToken, (req, res) => {
+        const user_id = req.user.id; // Get the logged-in user's ID from the token
+        const { title, problem_details, type, house_id } = req.body;
     
         // Validate required fields
-        if (!user_id || !title || !problem_details || !type) {
-            return res.status(400).json({ error: 'user_id, title, problem_details, and type are required fields.' });
+        if (!title || !problem_details || !type) {
+            return res.status(400).json({ error: 'Title, problem details, and type are required fields.' });
         }
     
         // Validate the ticket type
@@ -147,12 +161,13 @@ module.exports = function (app) {
     
             res.status(201).json({
                 message: 'Ticket created successfully',
-                ticket_id: result.insertId, // Return the ID of the newly created ticket
+                ticket_id: result.insertId,
+                user_id: user_id,
             });
         });
     });
 
-    app.put('/tickets', (req, res) => {
+    app.put('/tickets', authenticateToken,(req, res) => {
         const sql = `
             SELECT 
                 tickets.id, 

@@ -5,7 +5,7 @@
 exports.up = function(knex) {
     return knex.schema.table('users', (table) => {
       table.string('expireable_token').nullable(); // Token for authentication
-      table.timestamp('token_expires_at').nullable(); // Token expiration timestamp
+      table.string('token_expires_at').nullable(); // Token expiration timestamp
     });
   };
   
