@@ -5,6 +5,9 @@ const conn_db = require("./db_conn.js");
 const JWT_SECRET = 'NawafAlhoms'; // Use an env variable in production!
 const { isAdmin } = require('./middlewares/authmiddleware');
 
+
+
+
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -76,16 +79,15 @@ module.exports = function (app) {
     //log in 
     app.post('/login', (req, res) => {
         const { name, password } = req.body;
-    
-        console.log('Login request received with:', req.body); // Debugging log
+        console.log('Login request received with:', req.body); // Log received payload
     
         if (!name || !password) {
+            console.log('Name or password missing'); // Log missing credentials
             return res.status(400).send('Name and password are required');
         }
     
-        // Query the database to find the user by name
         const sql = 'SELECT * FROM users WHERE name = ?';
-        console.log('Executing SQL query:', sql, 'with parameters:', [name]); // Debugging log
+        console.log('Executing SQL query:', sql, 'with parameters:', [name]); // Log query details
     
         conn_db.query(sql, [name], (err, results) => {
             if (err) {
@@ -94,14 +96,13 @@ module.exports = function (app) {
             }
     
             if (results.length === 0) {
-                console.log('No user found with the given name'); // Debugging log
+                console.log('No user found with the given name'); // Log no user found
                 return res.status(401).send('Invalid name or password');
             }
     
             const user = results[0];
-            console.log('User found:', user); // Debugging log
+            console.log('User found:', user); // Log user details
     
-            // Compare the provided password with the hashed password in the database
             bcrypt.compare(password, user.password, (err, isMatch) => {
                 if (err) {
                     console.error('Bcrypt compare error:', err);
@@ -109,17 +110,15 @@ module.exports = function (app) {
                 }
     
                 if (isMatch) {
-                    console.log('Password matched for user:', user.name); // Debugging log
+                    console.log('Password matched for user:', user.name); // Log successful match
     
-                    // Generate the JWT token (without expiration)
                     const token = jwt.sign(
                         { userID: user.id, name: user.name, role: user.role },
                         JWT_SECRET
                     );
-                    console.log('Generated token:', token); // Debugging log
+                    console.log('Generated token:', token); // Log token
     
-                    // Set the expiration time for the token in the database
-                    const expireableToken = new Date(Date.now() + 3600 * 1000); // 1 hour expiration time
+                    const expireableToken = new Date(Date.now() + 3600 * 1000); // 1-hour expiration
                     conn_db.query(
                         'UPDATE users SET token_expires_at = ?, expireable_token = ? WHERE id = ?',
                         [expireableToken, token, user.id],
@@ -129,19 +128,18 @@ module.exports = function (app) {
                                 return res.status(500).send('Server error');
                             }
     
-                            console.log('Token updated in database for user ID:', user.id); // Debugging log
-    
-                            // Send the token back to the frontend
+                            console.log('Token updated for user ID:', user.id); // Log token update
                             res.json({ token });
                         }
                     );
                 } else {
-                    console.log('Password mismatch for user:', user.name); // Debugging log
+                    console.log('Password mismatch for user:', user.name); // Log password mismatch
                     res.status(401).send('Invalid name or password');
                 }
             });
         });
     });
+    
     
 
     //teckit
