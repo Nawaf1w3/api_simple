@@ -53,29 +53,71 @@ module.exports = function (app) {
     
     // Create User Route
     app.post('/user/create', (req, res) => {
-        const { name, password, email } = req.body;
-
-        // Hash the password before saving to DB
+        const {
+            name,
+            last_name,
+            gender,
+            birth_date,
+            current_adress,
+            phone,
+            income,
+            state,
+            email,
+            password
+        } = req.body;
+    
+        // Validate input
+        if (!name || !last_name || !gender || !birth_date || !current_adress || !phone || !income || !state || !email || !password) {
+            return res.status(400).send('All fields are required');
+        }
+    
+        // Hash the password before saving to the database
         bcrypt.hash(password, 10, (err, hashedPassword) => {
             if (err) {
                 console.error("Error hashing password:", err);
                 return res.status(500).send('Server error');
             }
-
-            let sql = `INSERT INTO user (name, password, email) VALUES (?, ?, ?)`;
-            
-            conn_db.query(sql, [name, hashedPassword, email], function (err, result) {
-                if (err) {
-                    console.error("Database error:", err);
-                    return res.status(500).send("Error inserting user");
-                } else {
+    
+            // Insert the user into the database
+            const sql = `
+                INSERT INTO users 
+                (name, last_name, gender, birth_date, current_adress, phone, income, state, email, password, role, user_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'customer', 'inwoners')
+            `;
+    
+            conn_db.query(
+                sql,
+                [
+                    name,
+                    last_name,
+                    gender,
+                    birth_date,
+                    current_adress,
+                    phone,
+                    income,
+                    state,
+                    email,
+                    hashedPassword
+                ],
+                (err, result) => {
+                    if (err) {
+                        console.error("Database error:", err);
+    
+                        // Handle unique email constraint violation
+                        if (err.code === 'ER_DUP_ENTRY') {
+                            return res.status(400).send("Email already exists");
+                        }
+    
+                        return res.status(500).send("Error inserting user");
+                    }
+    
                     console.log("User created:", result);
-                    res.send("User created successfully");
+                    res.status(201).send("User created successfully");
                 }
-            });
+            );
         });
     });
-
+    
     //log in 
     app.post('/login', (req, res) => {
         const { name, password } = req.body;
