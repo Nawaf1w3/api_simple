@@ -219,6 +219,7 @@ module.exports = function (app) {
         });
     });
 
+    //create tickt
     app.put('/tickets', authenticateToken,(req, res) => {
         const sql = `
             SELECT 
@@ -248,6 +249,8 @@ module.exports = function (app) {
             });
         });
     });
+
+    //create house
     app.post('/houses/create', authenticateToken, (req, res) => {
         const user_id = req.user.id; // ID van de ingelogde gebruiker uit de token
         const { title, city, price, post_cod, street } = req.body;
@@ -284,17 +287,87 @@ module.exports = function (app) {
             }
         );
     });
+
+    //retrive houses
     app.get('/houses', (req, res) => {
         const query = 'SELECT * FROM houses';
-        db.query(query, (err, results) => {
+        conn_db.query(query, (err, results) => {
           if (err) {
             console.error(err);
             return res.status(500).json({ message: 'Database error' });
           }
           res.json(results);
         });
-      });
+    });
       
+    //update house
+    app.patch('/houses/:id', (req, res) => {
+        const { id } = req.params; // ID of the house to update
+        const { title, city, price, post_cod, street } = req.body; // Fields to update
+    
+        // Debug logs
+        console.log('PATCH request received for ID:', id);
+        console.log('Request body:', req.body);
+    
+        // Validate fields
+        if (!title || !city || !price || !post_cod || !street) {
+            return res.status(400).json({ error: 'Alle velden zijn verplicht: title, city, price, post_cod, en street.' });
+        }
+    
+        // Ensure the price is positive
+        if (price <= 0) {
+            return res.status(400).json({ error: 'Prijs moet een positief getal zijn.' });
+        }
+    
+        // SQL query to update the house
+        const sql = `
+            UPDATE houses
+            SET title = ?, city = ?, price = ?, post_cod = ?, street = ?, updated_at = NOW()
+            WHERE id = ?
+        `;
+    
+        conn_db.query(sql, [title, city, price, post_cod, street, id], (err, result) => {
+            if (err) {
+                console.error('Error updating house:', err);
+                return res.status(500).json({ error: 'Server error' });
+            }
+    
+            console.log('SQL result:', result); // Debug log
+    
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Huis niet gevonden.' });
+            }
+    
+            res.status(200).json({ message: 'Huis succesvol aangepast' });
+        });
+    });
+    
+
+    //delete a house
+    app.delete('/houses/:id', (req, res) => {
+        const { id } = req.params; // ID of the house to delete
+    
+        // SQL query to delete the house
+        const sql = `
+            DELETE FROM houses
+            WHERE id = ?
+        `;
+    
+        conn_db.query(sql, [id], (err, result) => {
+            if (err) {
+                console.error('Error deleting house:', err);
+                return res.status(500).json({ error: 'Server error' });
+            }
+    
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Huis niet gevonden.' });
+            }
+    
+            res.status(200).json({ message: 'Huis succesvol verwijderd' });
+        });
+    });
+    
+    
     
 };
 
