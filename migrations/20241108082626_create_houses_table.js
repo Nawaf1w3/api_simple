@@ -8,8 +8,7 @@ exports.up = function(knex) {
       table.string('title').notNullable(); // Name of the house
       table.string('city').notNullable(); // Name of the hous
       table.string('price').notNullable(); // Name of the house
-      table.string('name').notNullable(); // Name of the house
-      table.string('post-cod').notNullable(); // Address of the house
+      table.string('post_cod').notNullable(); // Address of the house
       table.string('street').notNullable(); // Address of the house
       table.timestamps(true, true); // created_at and updated_at columns
     });

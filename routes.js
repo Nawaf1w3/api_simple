@@ -248,4 +248,53 @@ module.exports = function (app) {
             });
         });
     });
+    app.post('/houses/create', authenticateToken, (req, res) => {
+        const user_id = req.user.id; // ID van de ingelogde gebruiker uit de token
+        const { title, city, price, post_cod, street } = req.body;
+    
+        // Validatie van vereiste velden
+        if (!title || !city || !price  || !post_cod || !street) {
+            return res.status(400).json({ error: 'Alle velden zijn verplicht: title, city, price, post_cod, en street.' });
+        }
+    
+        // Controle op een positieve prijs
+        if (price <= 0) {
+            return res.status(400).json({ error: 'Prijs moet een positief getal zijn.' });
+        }
+    
+        // SQL-query om het huis toe te voegen
+        const sql = `
+            INSERT INTO houses (title, city, price, post_cod, street, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?,  NOW(), NOW())
+        `;
+    
+        conn_db.query(
+            sql,
+            [title, city, price, post_cod, street],
+            (err, result) => {
+                if (err) {
+                    console.error('Error inserting house:', err);
+                    return res.status(500).json({ error: 'Server error' });
+                }
+    
+                res.status(201).json({
+                    message: 'Huis succesvol aangemaakt',
+                    house_id: result.insertId,
+                });
+            }
+        );
+    });
+    app.get('/houses', (req, res) => {
+        const query = 'SELECT * FROM houses';
+        db.query(query, (err, results) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Database error' });
+          }
+          res.json(results);
+        });
+      });
+      
+    
 };
+
