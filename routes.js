@@ -253,10 +253,10 @@ module.exports = function (app) {
     //create house
     app.post('/houses/create', authenticateToken, (req, res) => {
         const user_id = req.user.id; // ID van de ingelogde gebruiker uit de token
-        const { title, city, price, post_cod, street } = req.body;
+        const { title, discription, city, price, post_cod, street } = req.body;
     
         // Validatie van vereiste velden
-        if (!title || !city || !price  || !post_cod || !street) {
+        if (!title || !discription || !city || !price  || !post_cod || !street) {
             return res.status(400).json({ error: 'Alle velden zijn verplicht: title, city, price, post_cod, en street.' });
         }
     
@@ -267,13 +267,13 @@ module.exports = function (app) {
     
         // SQL-query om het huis toe te voegen
         const sql = `
-            INSERT INTO houses (title, city, price, post_cod, street, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?,  NOW(), NOW())
+            INSERT INTO houses (title, discription, city, price, post_cod, street, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
         `;
     
-        conn_db.query(
+        conn_db.query(  
             sql,
-            [title, city, price, post_cod, street],
+            [title, discription, city, price, post_cod, street],
             (err, result) => {
                 if (err) {
                     console.error('Error inserting house:', err);
@@ -303,15 +303,15 @@ module.exports = function (app) {
     //update house
     app.patch('/houses/:id', (req, res) => {
         const { id } = req.params; // ID of the house to update
-        const { title, city, price, post_cod, street } = req.body; // Fields to update
+        const { title, discription, city, price, post_cod, street } = req.body; // Fields to update
     
         // Debug logs
         console.log('PATCH request received for ID:', id);
         console.log('Request body:', req.body);
     
         // Validate fields
-        if (!title || !city || !price || !post_cod || !street) {
-            return res.status(400).json({ error: 'Alle velden zijn verplicht: title, city, price, post_cod, en street.' });
+        if (!title || !discription || !city || !price || !post_cod || !street) {
+            return res.status(400).json({ error: 'Alle velden zijn verplicht: title, discription, city, price, post_cod, en street.' });
         }
     
         // Ensure the price is positive
@@ -322,11 +322,11 @@ module.exports = function (app) {
         // SQL query to update the house
         const sql = `
             UPDATE houses
-            SET title = ?, city = ?, price = ?, post_cod = ?, street = ?, updated_at = NOW()
+            SET title = ?, discription = ?, city = ?, price = ?, post_cod = ?, street = ?, updated_at = NOW()
             WHERE id = ?
         `;
     
-        conn_db.query(sql, [title, city, price, post_cod, street, id], (err, result) => {
+        conn_db.query(sql, [title, discription, city, price, post_cod, street, id], (err, result) => {
             if (err) {
                 console.error('Error updating house:', err);
                 return res.status(500).json({ error: 'Server error' });
