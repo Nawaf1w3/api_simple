@@ -366,8 +366,34 @@ module.exports = function (app) {
             res.status(200).json({ message: 'Huis succesvol verwijderd' });
         });
     });
-    
-    
-    
+
+    // Get user details
+    app.get('/users/:userId', authenticateToken, async (req, res) => {
+        const { userId } = req.params;
+      
+        try {
+          // Query to find user by ID
+          const sql = 'SELECT * FROM users WHERE id = ?';
+          conn_db.query(sql, [userId], (err, rows) => {
+            if (err) {
+              console.error('Error fetching user:', err);
+              return res.status(500).json({ message: 'Server error' });
+            }
+      
+            if (rows.length === 0) {
+              return res.status(404).json({ message: 'User not found' });
+            }
+      
+            // Exclude sensitive fields like password
+            const user = rows[0];
+            delete user.password;
+      
+            res.json(user); // Send user details
+          });
+        } catch (error) {
+          console.error('Error retrieving user details:', error);
+          res.status(500).json({ message: 'Server error' });
+        }
+    });
 };
 
