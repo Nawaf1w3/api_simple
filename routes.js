@@ -24,7 +24,7 @@ function authenticateToken(req, res, next) {
 }
 module.exports = function (app) {
     
-    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySUQiOjIsIm5hbWUiOiJ1c2VyMiIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTczMTMyODc0Nn0.yG49BDw-fiMAS-pVEiIY2f-fftZIWzZQhlcDX-49E7A';
+    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySUQiOjEsIm5hbWUiOiJ1c2VyMSIsInJvbGUiOiJhZG1pbiIsInVzZXJfdHlwZSI6Imlud29uZXJzIiwiaWF0IjoxNzMyMzc0MTQ3fQ.PLcMKiY_DmpPQljCL-n70jSEzJj_3hBvie8S4oJUv2k";
 
     // Decode the token to inspect its payload
     const decodedToken = jwt.decode(token);
@@ -155,7 +155,7 @@ module.exports = function (app) {
                     console.log('Password matched for user:', user.name); // Log successful match
     
                     const token = jwt.sign(
-                        { userID: user.id, name: user.name, role: user.role },
+                        { userID: user.id, name: user.name, role: user.role, user_type: user.user_type },
                         JWT_SECRET
                     );
                     console.log('Generated token:', token); // Log token
