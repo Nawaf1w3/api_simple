@@ -290,16 +290,51 @@ module.exports = function (app) {
 
     //retrive houses
     app.get('/houses', (req, res) => {
-        const query = 'SELECT * FROM houses';
-        conn_db.query(query, (err, results) => {
-          if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Database error' });
-          }
-          res.json(results);
+        const { city, maxPrice, title } = req.query; 
+        let sql = 'SELECT * FROM houses WHERE 1=1';
+        const params = [];
+    
+        if (city) {
+            const cities = city.split(','); 
+            sql += ` AND city IN (${cities.map(() => '?').join(',')})`;
+            params.push(...cities);
+        }
+    
+        if (maxPrice) {
+            sql += ' AND price <= ?';
+            params.push(maxPrice);
+        }
+    
+        if (title) {
+            sql += ' AND title LIKE ?';
+            params.push(`%${title}%`);
+        }
+    
+        conn_db.query(sql, params, (err, results) => {
+            if (err) {
+                console.error('Error fetching houses:', err);
+                return res.status(500).json({ error: 'Server error' });
+            }
+            res.json(results);
         });
     });
-      
+    
+
+    // Retrieve unique cities
+    app.get('/houses/cities', (req, res) => {
+        const sql = 'SELECT DISTINCT city FROM houses';
+
+        conn_db.query(sql, (err, results) => {
+            if (err) {
+                console.error('Error fetching cities:', err);
+                return res.status(500).json({ error: 'Server error' });
+            }
+
+            const cities = results.map(row => row.city);
+            res.json(cities);
+        });
+    });
+    
     //update house
     app.patch('/houses/:id', (req, res) => {
         const { id } = req.params; // ID of the house to update
@@ -365,6 +400,23 @@ module.exports = function (app) {
     
             res.status(200).json({ message: 'Huis succesvol verwijderd' });
         });
+    });
+    app.get('/houses/view', (req, res) => {
+        const { location, maxPrice, minRooms } = req.query;
+    
+        let filteredHouses = houses;
+    
+        if (location) {
+            filteredHouses = filteredHouses.filter(house => house.city.toLowerCase().includes(location.toLowerCase()));
+        }
+        if (maxPrice) {
+            filteredHouses = filteredHouses.filter(house => house.price <= parseInt(maxPrice));
+        }
+        if (minRooms) {
+            filteredHouses = filteredHouses.filter(house => house.rooms >= parseInt(minRooms));
+        }
+    
+        res.json(filteredHouses);
     });
 
     // Get user details
