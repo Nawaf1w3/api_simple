@@ -630,19 +630,23 @@ module.exports = function (app) {
         });
     });
 
-    // Retrieve all links between users and houses
+ 
     // app.get('/user-houses', isAdmin,(req, res) => {
-    //     const sql = `SELECT * FROM user_houses`;
+        //     const sql = `SELECT * FROM user_houses`;
 
-    //     conn_db.query(sql, (err, results) => {
-    //         if (err) {
-    //             console.error("Error fetching user-house links:", err);
-    //             return res.status(500).send("Server error.");
-    //         }
+        //     conn_db.query(sql, (err, results) => {
+        //         if (err) {
+        //             console.error("Error fetching user-house links:", err);
+        //             return res.status(500).send("Server error.");
+        //         }
 
-    //         res.send(results);
-    //     });
+        //         res.send(results);
+        //     });
     // });
+
+
+   // Retrieve all links between users and houses
+   
     app.get('/user-houses', isAdmin, (req, res) => {
         const sql = `
             SELECT u.name AS user_name, h.title, u.email, u.role, u.user_type
