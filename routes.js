@@ -33,10 +33,8 @@ module.exports = function (app) {
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({ extended: false }));
 
-    // Get User Route - Protected by Admin Middleware
-    // This route is protected by the admin middleware
+    
     app.get('/token', (req, res) => {
-        // If the user passes the isAdmin middleware, this function will execute
         res.send(decodedToken);
     });
     // Get User Route - Protected by Admin Middleware
@@ -70,15 +68,13 @@ module.exports = function (app) {
         if (!name || !last_name || !gender || !birth_date || !current_adress || !phone || !income || !state || !email || !password) {
             return res.status(400).send('All fields are required');
         }
-    
-        // Hash the password before saving to the database
+   
         bcrypt.hash(password, 10, (err, hashedPassword) => {
             if (err) {
                 console.error("Error hashing password:", err);
                 return res.status(500).send('Server error');
             }
     
-            // Insert the user into the database
             const sql = `
                 INSERT INTO users 
                 (name, last_name, gender, birth_date, current_adress, phone, income, state, email, password, role, user_type)
@@ -103,7 +99,6 @@ module.exports = function (app) {
                     if (err) {
                         console.error("Database error:", err);
     
-                        // Handle unique email constraint violation
                         if (err.code === 'ER_DUP_ENTRY') {
                             return res.status(400).send("Email already exists");
                         }
@@ -117,19 +112,192 @@ module.exports = function (app) {
             );
         });
     });
+
+    // Get user details
+    app.get('/users/:userId', authenticateToken, async (req, res) => {
+        const { userId } = req.params;
+        
+        try {
+            // Query to find user by ID
+            const sql = 'SELECT * FROM users WHERE id = ?';
+            conn_db.query(sql, [userId], (err, rows) => {
+            if (err) {
+                console.error('Error fetching user:', err);
+                return res.status(500).json({ message: 'Server error' });
+            }
+        
+            if (rows.length === 0) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+        
+            // Exclude sensitive fields like password
+            const user = rows[0];
+            delete user.password;
+        
+            res.json(user); // Send user details
+            });
+        } catch (error) {
+            console.error('Error retrieving user details:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
+    });
+
+    //delete user
+    app.delete('/users/:id', isAdmin, (req, res) => {
+        const userId = req.params.id;
     
+        let sql = "DELETE FROM users WHERE id = ?";
+        conn_db.query(sql, [userId], (err) => {
+            if (err) {
+                console.error('Error deleting user:', err);
+                return res.status(500).send('Server error');
+            }
+            res.send({ message: 'Gebruiker succesvol verwijderd' });
+        });
+    });
+
+    //user update
+    app.put('/users/:id', isAdmin, (req, res) => {
+        const userId = req.params.id;
+        const {
+            name,
+            last_name,
+            gender,
+            birth_date,
+            current_address,
+            phone,
+            income,
+            state,
+            email,
+            role,
+            user_type,
+            expireable_token,
+            token_expires_at,
+            password,
+        } = req.body;
+    
+    
+        if (!name || !email || !role) {
+            return res.status(400).send("Naam, e-mail en rol zijn verplicht.");
+        }
+    
+   
+        const updates = [];
+        const values = [];
+    
+        if (name) {
+            updates.push("name = ?");
+            values.push(name);
+        }
+        if (last_name) {
+            updates.push("last_name = ?");
+            values.push(last_name);
+        }
+        if (gender) {
+            updates.push("gender = ?");
+            values.push(gender);
+        }
+        if (birth_date) {
+            updates.push("birth_date = ?");
+            values.push(birth_date);
+        }
+        if (current_address) {
+            updates.push("current_address = ?");
+            values.push(current_address);
+        }
+        if (phone) {
+            updates.push("phone = ?");
+            values.push(phone);
+        }
+        if (income) {
+            updates.push("income = ?");
+            values.push(income);
+        }
+        if (state) {
+            updates.push("state = ?");
+            values.push(state);
+        }
+        if (email) {
+            updates.push("email = ?");
+            values.push(email);
+        }
+        if (role) {
+            updates.push("role = ?");
+            values.push(role);
+        }
+        if (user_type) {
+            updates.push("user_type = ?");
+            values.push(user_type);
+        }
+        if (expireable_token) {
+            updates.push("expireable_token = ?");
+            values.push(expireable_token);
+        }
+        if (token_expires_at) {
+            updates.push("token_expires_at = ?");
+            values.push(token_expires_at);
+        }
+
+        updates.push("updated_at = NOW()");
+   
+        if (password) {
+            bcrypt.hash(password, 10, (err, hashedPassword) => {
+                if (err) {
+                    console.error("Error hashing password:", err);
+                    return res.status(500).send("Server error");
+                }
+    
+                updates.push("password = ?");
+                values.push(hashedPassword);
+    
+                const sql = `UPDATE users SET ${updates.join(", ")} WHERE id = ?`;
+                values.push(userId);
+    
+                conn_db.query(sql, values, (err, result) => {
+                    if (err) {
+                        console.error("Error updating user:", err);
+                        return res.status(500).send("Server error.");
+                    }
+    
+                    if (result.affectedRows === 0) {
+                        return res.status(404).send("Gebruiker niet gevonden.");
+                    }
+    
+                    res.send({ message: "Gebruiker succesvol bijgewerkt." });
+                });
+            });
+        } else {
+            const sql = `UPDATE users SET ${updates.join(", ")} WHERE id = ?`;
+            values.push(userId);
+    
+            conn_db.query(sql, values, (err, result) => {
+                if (err) {
+                    console.error("Error updating user:", err);
+                    return res.status(500).send("Server error.");
+                }
+    
+                if (result.affectedRows === 0) {
+                    return res.status(404).send("Gebruiker niet gevonden.");
+                }
+    
+                res.send({ message: "Gebruiker succesvol bijgewerkt." });
+            });
+        }
+    });
+    
+
     //log in 
     app.post('/login', (req, res) => {
         const { name, password } = req.body;
-        console.log('Login request received with:', req.body); // Log received payload
+        console.log('Login request received with:', req.body); 
     
         if (!name || !password) {
-            console.log('Name or password missing'); // Log missing credentials
+            console.log('Name or password missing'); 
             return res.status(400).send('Name and password are required');
         }
     
         const sql = 'SELECT * FROM users WHERE name = ?';
-        console.log('Executing SQL query:', sql, 'with parameters:', [name]); // Log query details
+        console.log('Executing SQL query:', sql, 'with parameters:', [name]); 
     
         conn_db.query(sql, [name], (err, results) => {
             if (err) {
@@ -138,12 +306,12 @@ module.exports = function (app) {
             }
     
             if (results.length === 0) {
-                console.log('No user found with the given name'); // Log no user found
+                console.log('No user found with the given name');
                 return res.status(401).send('Invalid name or password');
             }
     
             const user = results[0];
-            console.log('User found:', user); // Log user details
+            console.log('User found:', user); 
     
             bcrypt.compare(password, user.password, (err, isMatch) => {
                 if (err) {
@@ -152,15 +320,15 @@ module.exports = function (app) {
                 }
     
                 if (isMatch) {
-                    console.log('Password matched for user:', user.name); // Log successful match
+                    console.log('Password matched for user:', user.name); 
     
                     const token = jwt.sign(
                         { userID: user.id, name: user.name, role: user.role, user_type: user.user_type },
                         JWT_SECRET
                     );
-                    console.log('Generated token:', token); // Log token
+                    console.log('Generated token:', token); 
     
-                    const expireableToken = new Date(Date.now() + 3600 * 1000); // 1-hour expiration
+                    const expireableToken = new Date(Date.now() + 3600 * 1000); 
                     conn_db.query(
                         'UPDATE users SET token_expires_at = ?, expireable_token = ? WHERE id = ?',
                         [expireableToken, token, user.id],
@@ -170,36 +338,33 @@ module.exports = function (app) {
                                 return res.status(500).send('Server error');
                             }
     
-                            console.log('Token updated for user ID:', user.id); // Log token update
+                            console.log('Token updated for user ID:', user.id); 
                             res.json({ token });
                         }
                     );
                 } else {
-                    console.log('Password mismatch for user:', user.name); // Log password mismatch
+                    console.log('Password mismatch for user:', user.name); 
                     res.status(401).send('Invalid name or password');
                 }
             });
         });
     });
     
-    
 
-    //teckit
+    //create tickts
     app.post('/tickets', authenticateToken, (req, res) => {
-        const user_id = req.user.id; // Get the logged-in user's ID from the token
+        const user_id = req.user.id; 
         const { title, problem_details, type, house_id } = req.body;
     
-        // Validate required fields
+
         if (!title || !problem_details || !type) {
             return res.status(400).json({ error: 'Title, problem details, and type are required fields.' });
         }
-    
-        // Validate the ticket type
+
         if (!['repair', 'quotation'].includes(type)) {
             return res.status(400).json({ error: "Type must be 'repair' or 'quotation'." });
         }
-    
-        // Insert ticket into the database
+
         const sql = `
             INSERT INTO tickets (user_id, title, problem_details, type, house_id, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, NOW(), NOW())
@@ -219,8 +384,8 @@ module.exports = function (app) {
         });
     });
 
-    //create tickt
-    app.put('/tickets', authenticateToken,(req, res) => {
+    //show tickts
+    app.put('/tickets', isAdmin,(req, res) => {
         const sql = `
             SELECT 
                 tickets.id, 
@@ -252,20 +417,20 @@ module.exports = function (app) {
 
     //create house
     app.post('/houses/create', authenticateToken, (req, res) => {
-        const user_id = req.user.id; // ID van de ingelogde gebruiker uit de token
+        const user_id = req.user.id; 
         const { title, discription, city, price, post_cod, street } = req.body;
     
-        // Validatie van vereiste velden
+
         if (!title || !discription || !city || !price  || !post_cod || !street) {
             return res.status(400).json({ error: 'Alle velden zijn verplicht: title, city, price, post_cod, en street.' });
         }
     
-        // Controle op een positieve prijs
+
         if (price <= 0) {
             return res.status(400).json({ error: 'Prijs moet een positief getal zijn.' });
         }
     
-        // SQL-query om het huis toe te voegen
+
         const sql = `
             INSERT INTO houses (title, discription, city, price, post_cod, street, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
@@ -337,24 +502,24 @@ module.exports = function (app) {
     
     //update house
     app.patch('/houses/:id', (req, res) => {
-        const { id } = req.params; // ID of the house to update
-        const { title, discription, city, price, post_cod, street } = req.body; // Fields to update
+        const { id } = req.params; 
+        const { title, discription, city, price, post_cod, street } = req.body;
     
-        // Debug logs
+
         console.log('PATCH request received for ID:', id);
         console.log('Request body:', req.body);
     
-        // Validate fields
+
         if (!title || !discription || !city || !price || !post_cod || !street) {
             return res.status(400).json({ error: 'Alle velden zijn verplicht: title, discription, city, price, post_cod, en street.' });
         }
     
-        // Ensure the price is positive
+    
         if (price <= 0) {
             return res.status(400).json({ error: 'Prijs moet een positief getal zijn.' });
         }
     
-        // SQL query to update the house
+
         const sql = `
             UPDATE houses
             SET title = ?, discription = ?, city = ?, price = ?, post_cod = ?, street = ?, updated_at = NOW()
@@ -367,7 +532,7 @@ module.exports = function (app) {
                 return res.status(500).json({ error: 'Server error' });
             }
     
-            console.log('SQL result:', result); // Debug log
+            console.log('SQL result:', result);
     
             if (result.affectedRows === 0) {
                 return res.status(404).json({ error: 'Huis niet gevonden.' });
@@ -376,7 +541,30 @@ module.exports = function (app) {
             res.status(200).json({ message: 'Huis succesvol aangepast' });
         });
     });
-    
+
+    // Retrieve a single house by ID
+    app.get('/houses/:id', (req, res) => {
+        const { id } = req.params; 
+
+        const sql = `
+            SELECT * 
+            FROM houses 
+            WHERE id = ?
+        `;
+
+        conn_db.query(sql, [id], (err, result) => {
+            if (err) {
+                console.error('Error fetching house:', err);
+                return res.status(500).json({ error: 'Server error' });
+            }
+
+            if (result.length === 0) {
+                return res.status(404).json({ error: 'Huis niet gevonden.' });
+            }
+
+            res.json(result[0]);
+        });
+    });
 
     //delete a house
     app.delete('/houses/:id', (req, res) => {
@@ -401,6 +589,8 @@ module.exports = function (app) {
             res.status(200).json({ message: 'Huis succesvol verwijderd' });
         });
     });
+
+    //show avilable houses by filter
     app.get('/houses/view', (req, res) => {
         const { location, maxPrice, minRooms } = req.query;
     
@@ -419,33 +609,154 @@ module.exports = function (app) {
         res.json(filteredHouses);
     });
 
-    // Get user details
-    app.get('/users/:userId', authenticateToken, async (req, res) => {
-        const { userId } = req.params;
-      
-        try {
-          // Query to find user by ID
-          const sql = 'SELECT * FROM users WHERE id = ?';
-          conn_db.query(sql, [userId], (err, rows) => {
-            if (err) {
-              console.error('Error fetching user:', err);
-              return res.status(500).json({ message: 'Server error' });
-            }
-      
-            if (rows.length === 0) {
-              return res.status(404).json({ message: 'User not found' });
-            }
-      
-            // Exclude sensitive fields like password
-            const user = rows[0];
-            delete user.password;
-      
-            res.json(user); // Send user details
-          });
-        } catch (error) {
-          console.error('Error retrieving user details:', error);
-          res.status(500).json({ message: 'Server error' });
-        }
-    });
-};
+    // Create a link between a user and a house
+    app.post('/user-houses', isAdmin,(req, res) => {
+        const { user_id, house_id } = req.body;
 
+        // Validation
+        if (!user_id || !house_id) {
+            return res.status(400).send("user_id en house_id zijn verplicht.");
+        }
+
+        const sql = `INSERT INTO user_houses (user_id, house_id, created_at, updated_at) VALUES (?, ?, NOW(), NOW())`;
+
+        conn_db.query(sql, [user_id, house_id], (err, result) => {
+            if (err) {
+                console.error("Error linking user to house:", err);
+                return res.status(500).send("Server error.");
+            }
+
+            res.status(201).send({ message: "Gebruiker succesvol gekoppeld aan huis.", id: result.insertId });
+        });
+    });
+
+    // Retrieve all links between users and houses
+    app.get('/user-houses', isAdmin,(req, res) => {
+        const sql = `SELECT * FROM user_houses`;
+
+        conn_db.query(sql, (err, results) => {
+            if (err) {
+                console.error("Error fetching user-house links:", err);
+                return res.status(500).send("Server error.");
+            }
+
+            res.send(results);
+        });
+    });
+
+    // Retrieve a specific link by id
+    app.get('/user-houses/:id', isAdmin,(req, res) => {
+        const { id } = req.params;
+
+        const sql = `SELECT * FROM user_houses WHERE id = ?`;
+
+        conn_db.query(sql, [id], (err, results) => {
+            if (err) {
+                console.error("Error fetching user-house link:", err);
+                return res.status(500).send("Server error.");
+            }
+
+            if (results.length === 0) {
+                return res.status(404).send("Koppeling niet gevonden.");
+            }
+
+            res.send(results[0]);
+        });
+    });
+
+    // Update the user_houses as wich house is the user renting
+    app.put('/user-houses/:id', isAdmin,(req, res) => {
+        const { id } = req.params;
+        const { user_id, house_id } = req.body;
+
+        if (!user_id || !house_id) {
+            return res.status(400).send("user_id en house_id zijn verplicht.");
+        }
+
+        const sql = `UPDATE user_houses SET user_id = ?, house_id = ?, updated_at = NOW() WHERE id = ?`;
+
+        conn_db.query(sql, [user_id, house_id, id], (err, result) => {
+            if (err) {
+                console.error("Error updating user-house link:", err);
+                return res.status(500).send("Server error.");
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).send("Koppeling niet gevonden.");
+            }
+
+            res.send({ message: "Koppeling succesvol bijgewerkt." });
+        });
+    });
+
+    // Delete a specific link by ID
+    app.delete('/user-houses/:id', isAdmin,(req, res) => {
+        const { id } = req.params;
+
+        const sql = `DELETE FROM user_houses WHERE id = ?`;
+
+        conn_db.query(sql, [id], (err, result) => {
+            if (err) {
+                console.error("Error deleting user-house link:", err);
+                return res.status(500).send("Server error.");
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).send("Koppeling niet gevonden.");
+            }
+
+            res.send({ message: "Koppeling succesvol verwijderd." });
+        });
+    });
+
+    // Retrieve all houses linked to a specific user
+    app.get('/user-houses/user/:userId', isAdmin,(req, res) => {
+        const { userId } = req.params;
+
+        const sql = `
+            SELECT h.*
+            FROM houses h
+            INNER JOIN user_houses uh ON h.id = uh.house_id
+            WHERE uh.user_id = ?
+        `;
+
+        conn_db.query(sql, [userId], (err, results) => {
+            if (err) {
+                console.error("Error fetching houses for user:", err);
+                return res.status(500).send("Server error.");
+            }
+
+            if (results.length === 0) {
+                return res.status(404).send("Geen huizen gevonden voor deze gebruiker.");
+            }
+
+            res.send(results);
+        });
+    });
+
+    //show the loged in user house
+    app.get('/user-houses/me', authenticateToken, (req, res) => {
+        const userId = req.user.id;
+    
+        const sql = `
+            SELECT h.*
+            FROM houses h
+            INNER JOIN user_houses uh ON h.id = uh.house_id
+            WHERE uh.user_id = ?
+        `;
+    
+        conn_db.query(sql, [userId], (err, results) => {
+            if (err) {
+                console.error("Error fetching houses for current user:", err);
+                return res.status(500).send("Server error.");
+            }
+    
+            if (results.length === 0) {
+                return res.status(404).send("Geen huizen gevonden voor de huidige gebruiker.");
+            }
+    
+            res.send(results);
+        });
+    });
+    
+};
