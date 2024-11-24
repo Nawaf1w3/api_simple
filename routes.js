@@ -631,18 +631,36 @@ module.exports = function (app) {
     });
 
     // Retrieve all links between users and houses
-    app.get('/user-houses', isAdmin,(req, res) => {
-        const sql = `SELECT * FROM user_houses`;
+    // app.get('/user-houses', isAdmin,(req, res) => {
+    //     const sql = `SELECT * FROM user_houses`;
 
+    //     conn_db.query(sql, (err, results) => {
+    //         if (err) {
+    //             console.error("Error fetching user-house links:", err);
+    //             return res.status(500).send("Server error.");
+    //         }
+
+    //         res.send(results);
+    //     });
+    // });
+    app.get('/user-houses', isAdmin, (req, res) => {
+        const sql = `
+            SELECT u.name AS user_name, h.title, u.email, u.role, u.user_type
+            FROM user_houses uh
+            JOIN users u ON uh.user_id = u.id
+            JOIN houses h ON uh.house_id = h.id
+        `;
+    
         conn_db.query(sql, (err, results) => {
             if (err) {
                 console.error("Error fetching user-house links:", err);
                 return res.status(500).send("Server error.");
             }
-
+    
             res.send(results);
         });
     });
+    
 
     // Retrieve a specific link by id
     app.get('/user-houses/:id', isAdmin,(req, res) => {
