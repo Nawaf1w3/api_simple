@@ -780,5 +780,107 @@ module.exports = function (app) {
             res.send(results);
         });
     });
+
+    //reactie
+    app.post('/ractions', authenticateToken, async (req, res) => {
+        const { user_id, house_id } = req.body;
     
+        if (!user_id || !house_id) {
+            return res.status(400).json({ error: 'user_id and house_id are required' });
+        }
+    
+        try {
+            const [id] = await knex('raction').insert({ user_id, house_id });
+            res.status(201).json({ message: 'Raction created successfully', id });
+        } catch (error) {
+            console.error('Error creating raction:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+    //reactie meldingen
+    app.get('/ractions', authenticateToken, async (req, res) => {
+        try {
+            const ractions = await knex('raction')
+                .join('users', 'raction.user_id', 'users.id')
+                .join('houses', 'raction.house_id', 'houses.id')
+                .select(
+                    'raction.id',
+                    'users.name as user_name',
+                    'houses.address as house_address',
+                    'raction.created_at'
+                );
+            res.status(200).json(ractions);
+        } catch (error) {
+            console.error('Error retrieving ractions:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
+    //singel reactie
+    app.get('/ractions/:id', authenticateToken, async (req, res) => {
+        const { id } = req.params;
+    
+        try {
+            const raction = await knex('raction')
+                .where({ 'raction.id': id })
+                .join('users', 'raction.user_id', 'users.id')
+                .join('houses', 'raction.house_id', 'houses.id')
+                .select(
+                    'raction.id',
+                    'users.name as user_name',
+                    'houses.address as house_address',
+                    'raction.created_at'
+                )
+                .first();
+    
+            if (!raction) {
+                return res.status(404).json({ error: 'Raction not found' });
+            }
+    
+            res.status(200).json(raction);
+        } catch (error) {
+            console.error('Error retrieving raction:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
+    //update reacti
+    app.put('/ractions/:id', authenticateToken, async (req, res) => {
+        const { id } = req.params;
+        const { user_id, house_id } = req.body;
+    
+        if (!user_id || !house_id) {
+            return res.status(400).json({ error: 'user_id and house_id are required' });
+        }
+    
+        try {
+            const updated = await knex('raction').where({ id }).update({ user_id, house_id });
+            if (!updated) {
+                return res.status(404).json({ error: 'Raction not found' });
+            }
+    
+            res.status(200).json({ message: 'Raction updated successfully' });
+        } catch (error) {
+            console.error('Error updating raction:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+
+    //delete
+    app.delete('/ractions/:id', authenticateToken, async (req, res) => {
+        const { id } = req.params;
+    
+        try {
+            const deleted = await knex('raction').where({ id }).del();
+            if (!deleted) {
+                return res.status(404).json({ error: 'Raction not found' });
+            }
+    
+            res.status(200).json({ message: 'Raction deleted successfully' });
+        } catch (error) {
+            console.error('Error deleting raction:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    });
+                
 };
